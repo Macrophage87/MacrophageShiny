@@ -93,9 +93,8 @@ server <- function(input, output,session) {
         return(NULL)
       }
       
-      hash<-digest(paste0(credentials$username,input$password,credentials$pw_date),algo="sha512",serialize = FALSE)
-      
-    if(credentials$password==hash){
+    if(credentials$password==
+       ppw_hash(credentials$username,input$password,credentials$pw_date)){
       
       current_user_status$current_user <- input$user
       current_user_status$user_id <- credentials$user_id

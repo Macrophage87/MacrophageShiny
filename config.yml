@@ -1,0 +1,11 @@
+default:
+  macrophage_mysql:
+    host: 54.245.174.230
+    port: 3306
+    username: stephen
+    password: xxC7I@TYL1dcci#7xnv7ta#hV
+  shiny_mysql:
+    host: localhost
+    port: 3306
+    username: shiny
+    password: j@EMx!0kT2U5k1@e2iuXc*6u%dHBsL
