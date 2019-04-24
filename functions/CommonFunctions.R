@@ -1,13 +1,8 @@
 
 
 db_connect<-function(database="transcriptome", user_db="shiny_mysql"){
-  
-  
-  cred<-config::get(user_db, file = "Production/config.yml")
-  
+  cred<-config::get(user_db, file= "/data/users/stephen/config.yml")
   require(RMariaDB)
-  
-  
   return(dbConnect(
     drv = MariaDB(),
     driver = "MySQL Driver",
@@ -19,6 +14,15 @@ db_connect<-function(database="transcriptome", user_db="shiny_mysql"){
   ))
   
 }
+
+lookup_table<-function(data){
+ datatable(data, selection = "single", filter="top", rownames = FALSE, extensions = "Scroller",
+                options = list(pagelength=10, dom="t",
+                               deferRender = TRUE,
+                               scrollY = 200,
+                               scroller = TRUE))
+}
+
 
 db_query<-function(...,params=NULL,database="transcriptome",user_db="shiny_mysql"){
   require(glue)
@@ -35,6 +39,12 @@ db_query<-function(...,params=NULL,database="transcriptome",user_db="shiny_mysql
   dbDisconnect(con)
   
   return(opt)
+}
+
+dt_to_df<-function(data_table_out){
+  df<-data_table_out%>%as.data.frame()%>%`[`(,-1)
+  rownames(df)<-data_table_out[,c(colnames(dt[,1])%>%get)]
+  return(df)
 }
 
 db_statement<-function(...,params=NULL,database="transcriptome",user_db="shiny_mysql"){

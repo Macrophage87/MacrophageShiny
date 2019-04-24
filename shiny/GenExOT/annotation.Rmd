@@ -1,0 +1,379 @@
+---
+title: "Overview of Transcript Levels Over Time Application"
+author: "Stephen J. Cieply, PhD"
+output: 
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+bibliography: /data/users/stephen/Dropbox/bibliography.bib
+csl: /data/users/stephen/Dropbox/vancouver.csl
+---
+
+\pagebreak
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+
+
+# Purpose 
+
+## Experimental design
+
+The purpose of this app is to provide an interface to RNAseq data generated in a timescale-based experiment. The current data that this app uses comes from an experiment that compares the transcriptional changes associated with HCMV infection in human primary monocytes. Timepoints from 4 hours post infection to 6 weeks post-infection were analyzed. Previous work has identified that viral gene expression occurs starting at 2 weeks post infection, with mature virus production starting at 6 weeks post infection and continuing until after 6 weeks post infection [@Smith2004; @Stevenson2014]. While previous work was done using microarray analysis at various timepoints up to 2 weeks post infection [@Stevenson2014; @Cieply2017] (in preparation), RNAseq data provides additional information to the understanding of viral gene expression in this cell type. Perhaps the greatest improvement is the ability to observe and analyze viral transcripts and human transcripts to potentially track the course of viral gene expression and replication, and observing non-coding RNAs and various isoforms, which would be absent in microarray analysis.
+
+## Need filled by this application
+
+The first analysis that is typically required when a new "-omics" type experiment is to track the relative patterns of expression of individual genes (or proteins, compounds, etc. for other analysis). This might be used to focus on previously identified genes of interest or to quickly determine the viability of other potential gene candidates for further analysis. This application is designed to fill that need.
+
+## Brief overview of application design
+
+This app interfaces with a MariaDB database, which I have created, that contains the RSEM-normalized TPM counts for each gene. The user selects a specific gene of interest from a datatable, that entry is looked up in the database and converted to a graph of gene expression over time and a table of fold changes compared to mock and the results of a T-test.
+
+# Functions
+
+As I have shown earlier, most of my code is stored as functions. This app contains functions from 2 distinct source files, one is a set of common functions that will be used throughout most of the code, such as a database query, while the second contains files specific to doing analysis concerning transcript levels over time. I have attached all the self-written functions used in this analysis.
+
+```{r}
+library(shiny)
+library(DT)
+library(magrittr)
+library(ggplot2)
+library(purrr)
+library(scales)
+library(ggthemes)
+library(glue)
+```
+
+## Common Functions
+
+This first set of functions are general functions that will be used in virtually every application and mainly concern access to the database.
+
+```{r}
+source(".../CommonFunctions.R")
+```
+
+
+### DB Connect 
+
+The MariaDB connection information is stored in a config.yml file and looked up each time to create a new database connection using a DBI interface. The user_db field points to the specific database credentials required. In this case, I'm using the shiny_mysql configuration, which is a user that can only connect through localhost and has SELECT only access to the database, so cannot modify data or tables. If I need to upload to the database, I switch that field to another user with greater privileges.
+
+```{r}
+db_connect<-function(database="transcriptome", user_db="shiny_mysql"){
+  cred<-config::get(user_db)
+  require(RMariaDB)
+  return(dbConnect(
+    drv = MariaDB(),
+    driver = "MySQL Driver",
+    username = cred$username,
+    password = cred$password,
+    dbname = database,
+    host  = cred$host,
+    port = cred$port
+  ))
+}
+```
+
+### DB Query
+
+This next function sends and retrieves a query (and NOT a statement such as INSERT, ALTER, DROP, etc) from the database. In addition, this function also provides two mechanisms for the interpolation of SQL values in a manner that does not pose any risk for accidental or intentional SQL injection [@yunus2018review]. The first method is the use of the glue_sql function which allows the insertion of code such as "date_created = {today()}" to add a variable date. The second allows for variables to be declared in the initial SQL query such as "gene_id = ?", with the ? being supplied to the database in a dbBind statement through a list of parameters. The first method uses a script to escape any potential sources of injection, while the second uses the DBI framework to create a parameterized query and supply the results, which protects against SQL injection. Typically, I use the first method for variables that would not be supplied by users, such as dates, as it does make the code more readable, while the second method is for user-supplied variables to eliminate the possibility of injection.
+
+```{r}
+db_query<-function(...,params=NULL,database="transcriptome",user_db="shiny_mysql"){
+  require(glue)
+  require(data.table)
+  require(magrittr)
+  con<-db_connect(database=database, user_db=user_db)
+  
+  query<-glue_sql(...,.con = con)
+  
+  res<-dbSendQuery(con,query)
+  if(!is.null(params)){dbBind(res,params)}
+  opt<-dbFetch(res)%>%as.data.table()
+  dbClearResult(res)
+  dbDisconnect(con)
+  
+  return(opt)
+}
+```
+
+## Specific functions
+
+This next set of functions are functions that are specific to handling the analysis of transcript levels over time, and may need to be called in several apps.
+
+```{r}
+source(".../CommonFunctions.R")
+```
+
+### Retrieve gene information
+
+This first function is read before analysis and written to a .csv file as the query takes a considerable amount of time. It pulls all the genes, excluding those where there are no transcripts at all for every experiment, by gene_id, an arbitrary autoincrementing integer that I use to link the data; gene_symbol, the HGNC approved gene symbol (for human genes); gene_name, the HGNC approved gene name [@Braschi2019]; and the species that gene belongs to, as both viral (HCMV) and human genes are present in this specific analysis. The CSV created using this function is read into memory at the start of the app.
+
+```{r}
+genes<-function(){
+  db_query("SELECT DISTINCT G.gene_id, 
+  G.gene_symbol, G.gene_name, S.common_name AS species
+FROM genes G 
+JOIN transcript_values TV ON G.gene_id = TV.gene_id 
+JOIN species S ON G.species_id = S.species_id
+WHERE TV.TPM >0")
+}
+```
+
+### Retrieve RNAseq values for a given gene
+
+When the user selects a gene of interest, the expression levels for that gene are queried through the database. The data is retrieved in a log2(x+1) format along with the associated sample id. This data will be joined to the sample_info contained in the next function for comparing by infection status and time_point. 
+
+```{r}
+value_lookup<-function(gene_id){
+  db_query("SELECT LOG(2,TV.TPM+1) AS ltpm, sample_id
+           FROM transcript_values TV
+           WHERE gene_id = ?",params=list(gene_id))
+}
+```
+
+### Retrieve data for each sample
+
+This function retrieves the data for each sample such as sample type (1=Mock, 2=HCMV Infected), and timepoint (4-1008 as hours, or 4 hours to 6 weeks post infection).
+
+```{r}
+sample_info<-function(){db_query("SELECT SIV.sample_id, 
+SIV.sample_type_id, ST.sample_type_name AS type,
+                      SIV.timepoint
+                          FROM sample_info_virus SIV
+                      JOIN sample_types ST ON SIV.sample_type_id = ST.sample_type_id")}
+
+```
+
+### Helper function to avoid breaking code
+
+Some genes aren't expressed at all in the experiment or at certain time points. That creates a non-interpretable t-test result which could break the code. To avoid this, the results are simply returned as an NA.
+
+```{r}
+tt<-possibly(t.test,otherwise = NA_real_)
+```
+
+### Lookup gene, get Mean, SEM, and p-values by timepoint
+
+When the user selects a gene of interest, the gene is queried using the value_lookup function and merged with the sample_info. Mock-infected cells and HCMV-infected gene expression is then compared using a Welch Two Sample t-test and returning the p-value for each time point. The mean and standard error of the mean (SEM), as well as the total numbers of observations, are then calculated for each timepoint and experimental condition. The p-values and the mean/SEM values are merged and the results are used in later analyses.
+
+```{r}
+gene_over_time<-function(gene_id,samples=sample_info()){
+y<-value_lookup(gene_id)%>%merge(samples,on="sample_id")
+pv<-y[,.("pvalue"=tt(
+             ltpm[sample_type_id==1],
+             ltpm[sample_type_id==2])$p.value),
+         by=c("timepoint")]
+sum<-y[,.("mean"=mean(ltpm),
+          "sem"=sd(ltpm)/sqrt(.N), .N),
+       by=c("sample_type_id","type","timepoint")]
+out<-merge(pv,sum,on="timepoint")%>%
+  setorder("timepoint","sample_type_id")
+return(out)
+}
+```
+
+### A user-friendly list of time points
+
+For plotting purposes, the timepoint values are primarily stored in a numeric format (double) in the form of hours. However, as the number of hours gets into the week-time frame, that number is not particulatily user-friendly such as (1008 hours). This is simply a mechanism of obtaining the timepoint's user-friendly equivalent, specific to the sample set used. 
+
+```{r}
+timepoints<-function(gene_ot){
+db_query("SELECT timepoint_hrs, timepoint_friendly FROM timepoints
+                       WHERE timepoint_hrs IN (?)",
+         params=list(gene_ot[,timepoint%>%unique]))}
+```
+
+### Plot gene expression over time
+
+This function plots gene expression over time. It allows the data to optionally be viewed on a scale of log time, though by default it is on a linear time scale. SEM is used to provide the error bars on a line graph. The legend is placed on the bottom for ease of viewing on cellular phones.
+
+```{r}
+gene_ot_plot<-function(gene_ot, log=FALSE, tpts=timepoints(gene_ot)){
+  
+  plt<-ggplot(gene_ot,aes(x=timepoint,y=mean,color=type))+
+    geom_line()+
+    geom_errorbar(mapping = aes(ymin=mean-sem,ymax=mean+sem))+
+    theme_tufte(base_size = 16)+
+    scale_y_continuous(name="Log2 Normalized Gene Expression")+
+    guides(col=guide_legend(title=""))+
+    theme(legend.position="bottom")
+  
+
+  if(log){
+    plt<-plt+scale_x_log10(breaks = tpts[,timepoint_hrs],
+                      labels = tpts[,timepoint_friendly],
+                      name="Time Post Infection")    
+  }else{
+  plt<-plt+scale_x_continuous(breaks = tpts[,timepoint_hrs],
+                         labels = tpts[,timepoint_friendly],
+                         name="Time Post Infection")
+  }
+ return(plt)
+}
+```
+
+### Pretty P value formatting
+
+This is simply a helper function to convert p-values to the typical * format for use in the table. 
+
+```{r}
+pva<-function(p_val){ifelse(p_val<=0.05,pvalue2asterisk(p_val),"")}
+```
+
+### Create table of expression levels and statistics
+
+This function outputs the mean and SEM expression for both experimental types (Mock and HCMV-infected) by time point combined with the Log2Fold Change, as well as a linear-scale conversion and the p-value for mock vs HCMV for each time point with the gene of interest. It is output as a datatable, with buttons available to export the data to the format of choice.
+
+```{r}
+ot_datatable<-function(gene_ot, tpts=timepoints(gene_ot)){
+  
+  x<-tpts[gene_ot,on=c("timepoint_hrs"="timepoint")]%>%
+    .[,"value":=map2_chr(mean, sem,
+        function(x,y)glue("{x%>%round(2)} (±SEM {y%>%round(2)})"))]%>%
+    setorder("timepoint_hrs")
+
+  y<-dcast.data.table(x,timepoint_hrs~type,value.var = c("value"))%>%
+    merge(x[,.("L2FC"=sum(mean[sample_type_id==2])-
+                 sum(mean[sample_type_id==1])),by="timepoint_hrs"])%>%
+    merge(x[,.("P-value"=mean(pvalue)%>%
+          {paste(pvalue(.),pva(.))}),by="timepoint_hrs"])%>%
+    .[,"L2FC":=paste0(L2FC%>%signif(3)," (",ifelse(L2FC>=0,
+                                     paste0(signif(2^L2FC,3),"X"),
+                                     paste0("1/",signif(2^-L2FC,3)))
+                     ,")")]
+    
+  
+  tpts[y,on="timepoint_hrs"]%>%
+    .[,timepoint_hrs:=NULL]%>%
+    setnames("timepoint_friendly","Timepoint")%>%
+    datatable(options = list(dom="Bt",buttons = 
+    c('copy', 'csv', 'excel', 'pdf', 'print')),
+    extensions = "Buttons",rownames = FALSE)
+}
+```
+
+### Get NCBI information for a given gene
+
+Since some interaction with this data would be simply browsing through the set of genes and the user may not know the specifics of that gene of interest. This function simply looks up the ncbi_id for the gene of interest, and inserts an iframe to the NCBI gene page specific to that gene of interest that would provide the general idea of the function of this gene and some important papers that may be related to the understanding of gene function.
+
+```{r}
+ncbi_gn_get<-function(gene_id){
+  db_query("SELECT ncbi_id FROM genes WHERE gene_id=?",
+           params = list(gene_id))
+}
+
+geneview<-function(gene_id){
+  glue("<iframe src='https://www.ncbi.nlm.nih.gov/gene/",
+  "{ncbi_gn_get(gene_id)}' width='100%'",
+  "height='1000px'></iframe>")
+}
+```
+
+
+# Main Shiny App
+
+The previously described functions are then used to provide a user interface to the RNAseq data.
+
+## User Interface
+
+The user interface is based on linkages with a javascript-based datatable. Given the size of the genes and RNA-species listed is greater than 30,000, a standard select input would not work, as it would be unacceptably slow. For that reason I have placed the list of genes in a datatable, filterable by gene symbol, name, and/or the species that gene is associated with. The user then clicks on that gene and it will pull the respective gene of interest from the database and output a plot and a table detailing the expression pattern of that gene over time and experimental type. A tabset panel is used to avoid cluttering the page. I went with a simple, utilitarian design as this app is designed to be used in several areas, such as viewing on a cellular phone, within an iframe, or embedded in a dashboard. 
+
+```{r}
+ui <- fluidPage(
+    h3("Select a Gene of Interest"),
+        dataTableOutput("genes"),
+    tabsetPanel(
+        tabPanel("Plot of Expression Over Time",
+                 plotOutput("plot")),
+        tabPanel("Table of Expression Over Time",
+                 dataTableOutput("infotable")),
+        tabPanel("Gene Information (Human Genes Only)",
+                 htmlOutput("gene_info"))
+    ),
+br(),br(),br(),br()
+)
+```
+
+## Server
+
+This section handles the processing of the output.
+
+```{r}
+server <- function(input, output, session) {
+```
+
+### Selectable table of available genes
+
+A list of all genes is pulled from the CSV and presented on a datatable. To speed up presentation, rendering on the list of genes which is not listed in the active window is deferred until that data is needed. The list of genes can be filtered by gene symbol, name, or species.
+
+```{r}
+output$genes<-renderDataTable({
+    DT::datatable(genes[,.("Symbol"=gene_symbol,"Name"=gene_name,Species)],
+                  selection = "single", filter="top", 
+                  rownames = FALSE, extensions = "Scroller",
+                  options = list(pagelength=10, dom="t",
+                                 deferRender = TRUE,
+                                 scrollY = 200,
+                                 scroller = TRUE))
+})
+```
+
+### Reactive expression.
+
+When the user selects a row, the gene_id belonging to the selected gene is retrieved (sel_gene), which is then queried with the gene_over time function in the genes_ot reactive expression. A reactive function is used in order for a single function call to provide data to several downstream expressions such as rendering the plot or table. 
+
+```{r}
+sel_gene<-reactive({genes[input$genes_rows_selected,gene_id]})
+
+genes_ot<-reactive({
+    sel_gene()%>%gene_over_time(samples = samp_inf)
+})
+```
+
+### Plot of Genes Over Time
+
+The output of the gene_over_time function is then used to create a plot of transcript levels over time. If no gene was selected, the output would be blank rather than return an error.
+
+```{r}
+output$plot<-renderPlot({
+    if(input$genes_rows_selected%>%length==0){return(NULL)}
+    genes_ot()%>%gene_ot_plot()
+})
+```
+
+### Table of Genes Over Time
+
+The reactive output of genes_ot is again used, this time instead to create a table of transcript levels and statistics associated with them. If no gene was selected, the output would be blank rather than return an error.
+
+```{r}
+output$infotable<-renderDataTable({
+    if(input$genes_rows_selected%>%length==0){return(NULL)}
+    genes_ot()%>%ot_datatable()
+    })  
+```
+
+### Gene Information
+
+This function simply displays an iframe to the NCBI gene information for the selected gene, so the user can refresh their knowledge of that gene's function and other parameters such as location on the genome, etc. If no gene was selected, the output would be blank rather than return an error.
+
+```{r}
+output$gene_info<-renderText({
+    if(input$genes_rows_selected%>%length==0){return(NULL)}
+    sel_gene()%>%geneview()
+    })
+```
+
+# Run the App
+
+Finally, this section of the code actually runs the described application.
+
+```{r}
+}
+shinyApp(ui = ui, server = server)
+```
+
+\pagebreak
+
+# Literature Cited

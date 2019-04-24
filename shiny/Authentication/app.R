@@ -1,16 +1,7 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
 library(shiny)
 library(shinyjs)
+library(lubridate)
 
-# Define UI for application that draws a histogram
 ui <- fluidPage(
   useShinyjs(),
   fluidRow(id="login",
@@ -53,21 +44,19 @@ ui <- fluidPage(
   )
 )
 
-# Define server logic required to draw a histogram
 server <- function(input, output,session) {
   
   current_user_status <- reactiveValues()
   current_user_status$logged <- FALSE
   current_user_status$current_user <- NULL
   current_user_status$user_id <- NULL
-  current_user_status$access <- FALSE
-  
+
 
   output$ui_page_1 <- renderUI({
     
     if(current_user_status$logged == TRUE){
       tagList(
-          shinyAppDir("~/Genes",
+          shinyAppDir("/data/users/stephen/Production/shiny/GenExOT",
                       options = list(width='100%',height='1024px'))
         )  
       
@@ -76,13 +65,11 @@ server <- function(input, output,session) {
     
     
   })
-  
 
-  
-  
+
   observeEvent(input$button_login, {
     
-    if(input$user!="" && input$password!=""){
+    if(input$user=="" | input$password==""){return(NULL)}
       
       credentials<-db_query("SELECT user_id, username, password, pw_date, one_time_pw FROM users WHERE username = ?"
                             ,params=list(input$user),
@@ -94,7 +81,7 @@ server <- function(input, output,session) {
       }
       
     if(credentials$password==
-       ppw_hash(credentials$username,input$password,credentials$pw_date)){
+       pw_hash(credentials$username,input$password,credentials$pw_date)){
       
       current_user_status$current_user <- input$user
       current_user_status$user_id <- credentials$user_id
@@ -107,11 +94,11 @@ server <- function(input, output,session) {
       
       
       db_statement(
-      "INSERT INTO user_logins (user_id, created_at) VALUES ({credentials$user_id},{now(tz='UTC')})",database = "investigators")
+      "INSERT INTO user_logins
+      (user_id, created_at) 
+      VALUES ({credentials$user_id},{now(tz='UTC')})",database = "investigators", user_db="macrophage_mysql")
       
-      Sys.setenv("user_id"=credentials$user_id)
       
-      current_user_status$access <- c("access_to_page_1","access_to_page_2")
 
       } else {
       current_user_status$logged <- FALSE
@@ -121,7 +108,7 @@ server <- function(input, output,session) {
         "Login failed"
       })
       }
-    }
+    
   })
   
   
@@ -137,7 +124,6 @@ server <- function(input, output,session) {
       return(NULL)
     }
     
-    
       pw_date<-today()
   
       pw_hash<-digest(paste0(current_user_status$current_user,input$new_pw_1,pw_date),algo="sha512",serialize = FALSE)
@@ -146,7 +132,6 @@ server <- function(input, output,session) {
                         params = list(pw_hash,pw_date,current_user_status$user_id),
                         database="investigators")
 
-      
       output$change_result <- renderText("Password successfully changed.")
       
       current_user_status$logged <- TRUE  
@@ -156,6 +141,6 @@ server <- function(input, output,session) {
   })
   
 }
-# Run the application 
-shinyApp(ui = ui, server = server, options=list(name="xyz"))
+
+shinyApp(ui = ui, server = server)
 

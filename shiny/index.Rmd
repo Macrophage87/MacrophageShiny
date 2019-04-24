@@ -1,0 +1,17 @@
+---
+title: "Macrophage Analytics"
+runtime: shiny
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r tabsets, echo=FALSE}
+shinyAppDir("/data/users/stephen/Production/shiny/Authentication",
+  options = list(
+    width = "100%", height = 1000
+  )
+)
+```
