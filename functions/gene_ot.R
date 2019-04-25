@@ -8,12 +8,16 @@ library(scales)
 library(KEGGgraph)
 source("/data/users/stephen/Production/functions/CommonFunctions.R")
 
-genes<-function(){
-  db_query("SELECT DISTINCT G.gene_id, G.gene_symbol, G.gene_name, S.common_name AS species
+genes<-function(update=FALSE){
+  gns<-db_query("SELECT DISTINCT G.gene_id, G.gene_symbol, G.gene_name, S.common_name AS species
 FROM genes G 
 JOIN transcript_values TV ON G.gene_id = TV.gene_id 
 JOIN species S ON G.species_id = S.species_id
 WHERE TV.TPM >0")
+  
+  if(update){fwrite(gns,"/data/users/stephen/Production/data/genes.csv")}
+
+  return(gns)
 }
 
 value_lookup<-function(gene_id){

@@ -33,7 +33,7 @@ ui <- fluidPage(
     )
 
 server <- function(input, output) {
-
+ 
     output$keggpw <- renderDataTable({
         kegg_pws[,.("Pathway ID"=pathway_id,"Pathway Name"=pathway_name)]%>%
             lookup_table()})
@@ -44,15 +44,15 @@ server <- function(input, output) {
     if(input$keggpw_rows_selected==""){return(FALSE)}
             
             
-        filename <- glue("/data/users/stephen/Production/",
+        filename <- glue("/data/users/stephen/Production/kegg/",
                          "{kegg_pws[input$keggpw_rows_selected,pathway_id]}.pathview.multi.png")
-        list(src = filename)
+        list(src = filename) 
     }, deleteFile = FALSE)
     
     kegg_ot_rc<-reactive(kegg_pws[input$keggpw_rows_selected,kegg_pw_id]%>%
             kegg_pw_genes(TRUE)%>%kegg_ot())
     
-    output$kegg_DT<-renderDataTable({
+    output$kegg_DT<-renderDataTable({ 
         if(input$keggpw_rows_selected%>%is.null){return(FALSE)} 
         if(input$keggpw_rows_selected%>%length==0){return(FALSE)}
         kegg_ot_rc()%>%kegg_datatable})
@@ -67,10 +67,10 @@ server <- function(input, output) {
         if(input$kegg_DT_rows_selected%>%length==0){return(NULL)}
         genes_ot()%>%gene_ot_plot()
     })
-    
+     
     output$infotable<-renderDataTable({
         if(input$kegg_DT_rows_selected%>%length==0){return(NULL)}
-        genes_ot()%>%ot_datatable()
+        genes_ot()%>%ot_datatable() 
     })  
     
     output$gene_info<-renderText({

@@ -43,9 +43,7 @@ ab_max<-possibly(function(x)ifelse(is.numeric(x),x,0)%>%abs%>%max,otherwise=0)
 kegg_datatable<-function(kegg_ot_o){
   kegg_ot_o2<-kegg_ot_o%>%copy%>%.[,gene_id:=NULL]
 
-  max<-kegg_ot_o2[,lapply(.SD,ab_max)]%>%t%>%max
-  
-  brks <- seq(from=-max,to=max,length.out = 255)
+  brks <- seq(from=-3,to=3,length.out = 255)
   clrs <- cividis(256)
   
   datatable(kegg_ot_o2,selection = "single", rownames = FALSE, extensions = "Scroller",
