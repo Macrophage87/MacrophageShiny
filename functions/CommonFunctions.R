@@ -1,79 +1,123 @@
 
 
-db_connect<-function(database="transcriptome", user_db="shiny_mysql"){
-  cred<-config::get(user_db, file= "/data/users/stephen/config.yml")
-  require(RMariaDB)
-  return(dbConnect(
-    drv = MariaDB(),
-    driver = "MySQL Driver",
-    username = cred$username,
-    password = cred$password,
-    dbname = database,
-    host  = cred$host,
-    port = cred$port
-  ))
-  
+library("dplyr", lib.loc = "/usr/lib/R/library")
+
+
+db_connect <-
+  function(database = "transcriptome", user_db = "shiny_mysql") {
+    cred <- config::get(user_db, file = "/data/users/stephen/config.yml")
+    require(RMariaDB)
+    return(
+      dbConnect(
+        drv = MariaDB(),
+        driver = "MySQL Driver",
+        username = cred$username,
+        password = cred$password,
+        dbname = database,
+        host  = cred$host,
+        port = cred$port
+      )
+    )
+    
+  }
+
+lookup_table <- function(data) {
+  datatable(
+    data,
+    selection = "single",
+    filter = "top",
+    rownames = FALSE,
+    extensions = "Scroller",
+    options = list(
+      pagelength = 10,
+      dom = "t",
+      deferRender = TRUE,
+      scrollY = 200,
+      scroller = TRUE
+    )
+  )
 }
 
-lookup_table<-function(data){
- datatable(data, selection = "single", filter="top", rownames = FALSE, extensions = "Scroller",
-                options = list(pagelength=10, dom="t",
-                               deferRender = TRUE,
-                               scrollY = 200,
-                               scroller = TRUE))
-}
 
+db_query <-
+  function(...,
+           params = NULL,
+           database = "transcriptome",
+           user_db = "shiny_mysql") {
+    require(glue)
+    require(data.table)
+    require(magrittr)
+    con <- db_connect(database = database, user_db = user_db)
+    
+    query <- glue_sql(..., .con = con)
+    
+    res <- dbSendQuery(con, query)
+    if (!is.null(params)) {
+      dbBind(res, params)
+    }
+    opt <- dbFetch(res) %>% as.data.table()
+    dbClearResult(res)
+    dbDisconnect(con)
+    
+    return(opt)
+  }
 
-db_query<-function(...,params=NULL,database="transcriptome",user_db="shiny_mysql"){
-  require(glue)
-  require(data.table)
-  require(magrittr)
-  con<-db_connect(database=database, user_db=user_db)
-  
-  query<-glue_sql(...,.con = con)
-  
-  res<-dbSendQuery(con,query)
-  if(!is.null(params)){dbBind(res,params)}
-  opt<-dbFetch(res)%>%as.data.table()
-  dbClearResult(res)
-  dbDisconnect(con)
-  
-  return(opt)
-}
-
-dt_to_df<-function(data_table_out){
-  df<-data_table_out%>%as.data.frame()%>%`[`(,-1)
-  rownames(df)<-data_table_out[,c(colnames(dt[,1])%>%get)]
+dt_to_df <- function(data_table_out) {
+  df <- data_table_out %>% as.data.frame() %>% `[`(, -1)
+  rownames(df) <- data_table_out[, c(colnames(dt[, 1]) %>% get)]
   return(df)
 }
 
-db_statement<-function(...,params=NULL,database="transcriptome",user_db="shiny_mysql"){
-  require(glue)
-  require(data.table)
-  con<-db_connect(database=database,user_db=user_db)
-  
-  statement<-glue_sql(...,.con = con)
-  
-  res<-dbSendStatement(con,statement)
-  if(!is.null(params)){dbBind(res,params)}
-  rows<-dbGetRowsAffected(res)
-  dbClearResult(res)
-  dbDisconnect(con)
-  
-  return(rows)
-}
+db_statement <-
+  function(...,
+           params = NULL,
+           database = "transcriptome",
+           user_db = "shiny_mysql") {
+    require(glue)
+    require(data.table)
+    con <- db_connect(database = database, user_db = user_db)
+    
+    statement <- glue_sql(..., .con = con)
+    
+    res <- dbSendStatement(con, statement)
+    if (!is.null(params)) {
+      dbBind(res, params)
+    }
+    rows <- dbGetRowsAffected(res)
+    dbClearResult(res)
+    dbDisconnect(con)
+    
+    return(rows)
+  }
 
-pw_hash<-function(username, password,pw_date){
+pw_hash <- function(username, password, pw_date) {
   require(digest)
-  digest(paste0(username,password,pw_date),algo="sha512",serialize = FALSE)
+  digest(paste0(username, password, pw_date),
+         algo = "sha512",
+         serialize = FALSE)
 }
 
-gcat<-.%>%glue_col%>%cat
-
-p_start<-function(x, ...){
-  if(getOption("verbose")==TRUE){x%>%glue_data(...)%>%bold()%>%blue()%>%cat()}  
+token_hash <- function(page) {
+  require(digest)
+  token_pw <-
+    config::get("auth_token", file = "/data/users/stephen/config.yml")
+  digest(
+    paste0(page, token_pw$token, lubridate::today()),
+    algo = "sha512",
+    serialize = FALSE
+  )
 }
 
-p_complete<-function(x, ...){
-  if(getOption("verbose")==TRUE){x%>%glue_data(...)%>%bold()%>%green()%>%cat()}  
-}  
+gcat <- . %>% glue_col %>% cat
+
+p_start <- function(x, ...) {
+  if (getOption("verbose") == TRUE) {
+    x %>% glue_data(...) %>% bold() %>% blue() %>% cat()
+  }
+}
+
+p_complete <- function(x, ...) {
+  if (getOption("verbose") == TRUE) {
+    x %>% glue_data(...) %>% bold() %>% green() %>% cat()
+  }
+}

@@ -74,6 +74,8 @@ gene_ot_plot<-function(gene_ot, log=FALSE, tpts=timepoints(gene_ot)){
 
 pva<-function(p_val){ifelse(p_val<=0.05,pvalue2asterisk(p_val),"")}
 
+p_val_pretty<-function(p_val){paste(pvalue(p_val),pva(p_val))}
+
 ot_datatable<-function(gene_ot, tpts=timepoints(gene_ot)){
   
   x<-tpts[gene_ot,on=c("timepoint_hrs"="timepoint")]%>%
@@ -164,8 +166,8 @@ tpt_stats<-function(gene_values, tp_merge=FALSE){
   all0<-gene_values[,.("sd"=sd(ltpm),"max"=max(ltpm)),by="gene_symbol"][sd==0|max<2]
   
   if(tp_merge==TRUE){
-    m_by<-c("gene_symbol","gene_name")
-  }else{m_by<-c("gene_symbol","gene_name","timepoint")}
+    m_by<-c("gene_id","gene_symbol","gene_name")
+  }else{m_by<-c("gene_id","gene_symbol","gene_name","timepoint")}
   
   gene_values%>%.[!all0,on="gene_symbol"]%>%
     .[,.("pvalue"=tt(ltpm[sample_type_id==2],

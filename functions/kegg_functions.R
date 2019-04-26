@@ -55,7 +55,7 @@ kegg_datatable<-function(kegg_ot_o){
     formatStyle(
       3:7,
       fontWeight = 'bold',
-      color = styleInterval(-0.001,c("white",'black')),
+      color = styleInterval(-0.001,c("lightblue",'black')),
       backgroundColor = styleInterval(brks, clrs)
     )
   
