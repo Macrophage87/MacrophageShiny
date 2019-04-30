@@ -20,7 +20,7 @@ git_push<-function(object=repository("~/Production"),name="https://github.com/Ma
   message("Push successful")
 }
 
-git_acp<-function(message,path="~/Production"){
+git_acp<-function(message,path="~/Production/*"){
   git_add(path=path)
   git_commit(message=message)
   git_push()

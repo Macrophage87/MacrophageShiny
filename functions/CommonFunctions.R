@@ -2,10 +2,11 @@
 
 library("dplyr", lib.loc = "/usr/lib/R/library")
 
+setwd("/data/users/stephen/Production")
 
 db_connect <-
-  function(database = "transcriptome", user_db = "shiny_mysql") {
-    cred <- config::get(user_db, file = "/data/users/stephen/config.yml")
+  function(database = NULL, user_db = "shiny_mysql") {
+    cred <- config::get(user_db)
     require(RMariaDB)
     return(
       dbConnect(
@@ -13,7 +14,7 @@ db_connect <-
         driver = "MySQL Driver",
         username = cred$username,
         password = cred$password,
-        dbname = database,
+        dbname = ifelse(is.null(database),cred$database,database),
         host  = cred$host,
         port = cred$port
       )
@@ -42,7 +43,7 @@ lookup_table <- function(data) {
 db_query <-
   function(...,
            params = NULL,
-           database = "transcriptome",
+           database = NULL,
            user_db = "shiny_mysql") {
     require(glue)
     require(data.table)
@@ -71,7 +72,7 @@ dt_to_df <- function(data_table_out) {
 db_statement <-
   function(...,
            params = NULL,
-           database = "transcriptome",
+           database = NULL,
            user_db = "shiny_mysql") {
     require(glue)
     require(data.table)

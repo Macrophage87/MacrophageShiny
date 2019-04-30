@@ -1,6 +1,9 @@
-*.png
-*.pdf
-*.yml
-*.xml
-*.csv
-*.tsv
+**/*.png
+**/*.pdf
+**/*.yml
+**/*.xml
+**/*.csv
+**/*.tsv
+**/*.txt
+**/*.RDS
+**/*.rds

@@ -44,4 +44,7 @@ string_table<-function(str_v,samp=sample_info()){
 }
 
 
+
+
+
 #ggplot(data = zz, aes(y=gene_symbol,x=Timept,color=L2FC,size=pvalue))+geom_point()

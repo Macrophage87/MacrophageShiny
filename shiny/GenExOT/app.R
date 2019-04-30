@@ -10,10 +10,8 @@ library(glue)
 source("/data/users/stephen/Production/functions/CommonFunctions.R")
 source("/data/users/stephen/Production/functions/gene_ot.R")
 
-  
 genes<-fread("/data/users/stephen/Production/data/genes.csv")
 samp_inf<-sample_info()
-
 
 ui <- fluidPage(
     h3("Select a Gene of Interest"),
@@ -25,18 +23,13 @@ ui <- fluidPage(
     ),
 br(),br(),br(),br()
 ) 
-
 server <- function(input, output, session) {
-
 output$genes<-renderDataTable({
-    genes[,.("Symbol"=gene_symbol,"Name"=gene_name,"Species"=species)]%>%lookup_table()
-})
+    genes[,.("Symbol"=gene_symbol,"Name"=gene_name,"Species"=species)]%>%lookup_table()})
 
 sel_gene<-reactive({genes[input$genes_rows_selected,gene_id]})
 
-genes_ot<-reactive({
-    sel_gene()%>%gene_over_time(samples = samp_inf)
-})
+genes_ot<-reactive({sel_gene()%>%gene_over_time(samples = samp_inf)})
 
 output$plot<-renderPlot({
     if(input$genes_rows_selected%>%length==0){return(NULL)}

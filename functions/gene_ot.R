@@ -48,7 +48,7 @@ return(out)
 timepoints<-function(gene_ot){db_query("SELECT timepoint_hrs, timepoint_friendly FROM timepoints
                        WHERE timepoint_hrs IN (?)",params=list(gene_ot[,timepoint%>%unique]))}
 
-gene_ot_plot<-function(gene_ot, log=FALSE, tpts=timepoints(gene_ot)){
+gene_ot_plot<-function(gene_ot, log=FALSE, tpts=timepoints(gene_ot),title=NULL){
   
   plt<-ggplot(gene_ot,aes(x=timepoint,y=mean,color=type))+
     geom_line()+
@@ -56,7 +56,9 @@ gene_ot_plot<-function(gene_ot, log=FALSE, tpts=timepoints(gene_ot)){
     theme_tufte(base_size = 16)+
     scale_y_continuous(name="Log2 Normalized Gene Expression")+
     guides(col=guide_legend(title=""))+
-    theme(legend.position="bottom")
+    theme(legend.position="bottom")+
+    ggtitle(title)
+    
   
 
   if(log){
@@ -178,4 +180,35 @@ tpt_stats<-function(gene_values, tp_merge=FALSE){
     ),
     by=m_by]%>%
     .[,"qvalue":=qvalue::qvalue(pvalue)$qvalue]
+}
+
+
+volcano_plot<-function(data, maxq=0.2, minFC = 0, maxp=0){
+
+    plt<-data%>%
+    ggplot(aes(x=L2FC, y=pval))+
+    stat_density_2d(aes(fill = stat(level)), n=100
+                    , geom = "polygon"
+                    )+
+    scale_fill_viridis(option = "B")+
+    geom_point(
+      data=data[qvalue<=maxq][abs(L2FC)>= minFC][pvalue<=maxp],
+      aes(x=L2FC, y=pval,
+          text=glue("</br>
+                                 Name: {gene_symbol}
+                                 Symbol: {gene_name}
+                                 P-value: {pvalue}
+                                 Q-value: {qvalue}")))+
+      theme_tufte(base_size = 18)+
+      scale_x_continuous(name = "Log2 Fold Change")+
+      scale_y_continuous(name = "-Log10(P-Value)")+
+      theme(legend.position = "none")
+    
+
+#    scale_y_continuous(name=expression("Log"[2]*" Fold Change"))
+    
+    
+  
+  
+  ggplotly(plt)
 }

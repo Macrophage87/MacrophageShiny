@@ -32,8 +32,12 @@ ui <- fluidPage(
         ,width=12)
     )
 
-server <- function(input, output) {
- 
+server <- function(input, output, session) {
+    observe({
+        strg<-parseQueryString(session$clientData$url_search)
+        if(strg$a != token_hash("KEGG")){q()}
+    })
+    
     output$keggpw <- renderDataTable({
         kegg_pws[,.("Pathway ID"=pathway_id,"Pathway Name"=pathway_name)]%>%
             lookup_table()})
@@ -65,7 +69,7 @@ server <- function(input, output) {
     
     output$plot<-renderPlot({
         if(input$kegg_DT_rows_selected%>%length==0){return(NULL)}
-        genes_ot()%>%gene_ot_plot()
+        genes_ot()%>%gene_ot_plot() 
     })
      
     output$infotable<-renderDataTable({
