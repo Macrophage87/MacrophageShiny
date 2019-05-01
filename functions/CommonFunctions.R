@@ -65,7 +65,15 @@ db_query <-
 
 dt_to_df <- function(data_table_out) {
   df <- data_table_out %>% as.data.frame() %>% `[`(, -1)
-  rownames(df) <- data_table_out[, c(colnames(dt[, 1]) %>% get)]
+  rownames(df) <- data_table_out[, c(colnames(data_table_out[, 1]) %>% get)]
+  return(df)
+}
+
+dt_to_df2 <- function(data_table_out) {
+  data_table_out<-yy
+  
+  df <- data_table_out %>% as.data.frame() %>% `[`(, -1)
+  rownames(df) <- data_table_out[, c(colnames(data_table_out[, 1]) %>% get)]
   return(df)
 }
 
