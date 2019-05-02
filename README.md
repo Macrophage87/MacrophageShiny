@@ -78,6 +78,21 @@ note that the “tidyverse” package can take a long time, so plan
 accordingly. Download Rcpp from source do to some dependency issues with
 tidyverse (<https://github.com/tidyverse/dplyr/issues/36>).
 
+
+To install any packages, run R as a superuser to access the global library.
+
+``` bash
+sudo R
+```
+
+Then change the path to the global library.
+
+``` r
+.libPaths("/usr/lib/R/library")
+```
+
+Then install the packages
+
 ``` r
 install.packages("shiny")
 install.packages("rmarkdown")
