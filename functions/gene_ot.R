@@ -26,19 +26,31 @@ value_lookup<-function(gene_id){
            WHERE gene_id IN (?)",params=list(gene_id))
 }
 
-sample_info<-function(){db_query("SELECT SIV.sample_id, SIV.sample_type_id, ST.sample_type_name AS type,
+sample_info<-function(numeric_tp=TRUE){if(numeric_tp){
+db_query("SELECT SIV.sample_id, SIV.sample_type_id, ST.sample_type_name AS type,
                       SIV.timepoint
                           FROM sample_info_virus SIV
+                      JOIN sample_types ST ON SIV.sample_type_id = ST.sample_type_id")
+  }else
+  db_query("SELECT SIV.sample_id, SIV.sample_type_id, ST.sample_type_name AS type, 
+                T.timepoint_friendly AS timepoint
+                          FROM sample_info_virus SIV
+                          JOIN timepoints T ON T.timepoint_hrs = SIV.timepoint
                       JOIN sample_types ST ON SIV.sample_type_id = ST.sample_type_id")}
+  
 
 tt<-possibly(t.test,otherwise = NA_real_)
 
+pv<-function(df,by=c('timepoint')){
+df[,.("pvalue"=tt(
+  ltpm[sample_type_id==1],
+  ltpm[sample_type_id==2])$p.value),
+  by=by]}
+
+
 gene_over_time<-function(gene_id,samples=sample_info()){
 y<-value_lookup(gene_id)%>%merge(samples,on="sample_id")
-pv<-y[,.("pvalue"=tt(
-             ltpm[sample_type_id==1],
-             ltpm[sample_type_id==2])$p.value),
-         by=c("timepoint")]
+pv<-y%>%pv
 sum<-y[,.("mean"=mean(ltpm),"sem"=sd(ltpm)/sqrt(.N), .N),by=c("sample_type_id","type","timepoint")]
 out<-merge(pv,sum,on="timepoint")%>%setorder("timepoint","sample_type_id")
 return(out)
@@ -211,4 +223,35 @@ volcano_plot<-function(data, maxq=0.2, minFC = 0, maxp=0){
   
   
   ggplotly(plt)
+}
+
+
+gene_ot_ui<-function(id){
+  ns<-NS(id)
+  
+  tabsetPanel(
+    tabPanel("Plot of Expression Over Time",plotOutput(ns("plot"))),
+    tabPanel("Table of Expression Over Time",dataTableOutput(ns("infotable"))),
+    tabPanel("Gene Information", htmlOutput(ns("gene_info")))
+  )
+}
+
+gene_ot_server<-function(input,output,session,gene_sel){
+  
+  #stopifnot(is.null(gene_sel))
+  
+  genes_ot<-reactive(gene_sel()%>%gene_over_time())
+  
+  output$plot<-renderPlot({
+    genes_ot()%>%gene_ot_plot()
+  })
+  
+  output$infotable<-renderDataTable({
+    genes_ot()%>%ot_datatable()
+  })  
+  
+  output$gene_info<-renderText({
+    gene_id%>%geneview()
+  })
+  
 }
