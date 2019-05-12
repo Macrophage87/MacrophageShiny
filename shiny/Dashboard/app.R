@@ -1,3 +1,5 @@
+setwd(config::get("working_directory"))
+
 library(shinydashboard)
 library(shiny)
 library(data.table)

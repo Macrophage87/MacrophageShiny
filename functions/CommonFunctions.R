@@ -1,4 +1,4 @@
-
+setwd(config::get("working_directory"))
 
 library("dplyr", lib.loc = "/usr/lib/R/library")
 

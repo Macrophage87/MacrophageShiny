@@ -1,3 +1,6 @@
+setwd(config::get("working_directory"))
+
+
 library(shiny)
 library(DT)
 library(magrittr)
@@ -7,10 +10,11 @@ library(scales)
 library(ggthemes)
 library(glue)
 
-source("/data/users/stephen/Production/functions/CommonFunctions.R")
-source("/data/users/stephen/Production/functions/gene_ot.R")
+source("functions/CommonFunctions.R")
+source("functions/gene_ot.R")
 
-genes<-fread("/data/users/stephen/Production/data/genes.csv")
+  
+genes<-fread("data/genes.csv")
 samp_inf<-sample_info()
 
 ui <- fluidPage(
