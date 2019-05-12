@@ -12,7 +12,7 @@ ui <- fluidPage(
                ".shiny-output-error { visibility: hidden; }",
                ".shiny-output-error:before { visibility: hidden; }"
     ),
-    volcano_ui("volc"), 
+    volcano_ui("volc"),
     gene_ot_ui("gene_ot")
 )
 server <- function(input, output) {
@@ -20,4 +20,5 @@ gene_id<-callModule(volcano_server,"volc")
 callModule(gene_ot_server,"gene_ot",gene_id)
 }
 
+# Run the application 
 shinyApp(ui = ui, server = server)

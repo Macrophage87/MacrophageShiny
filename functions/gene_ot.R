@@ -119,7 +119,7 @@ ncbi_gn_get<-function(gene_id){
 
 geneview<-function(gene_id){
   glue("<iframe src='https://www.ncbi.nlm.nih.gov/gene/",
-  "{ncbi_gn_get(gene_id)}' width='100%'",
+  "{ncbi_gn_get(gene_id%>%as.integer)}' width='100%'",
   "height='1000px'></iframe>")
 }
 
@@ -251,7 +251,74 @@ gene_ot_server<-function(input,output,session,gene_sel){
   })  
   
   output$gene_info<-renderText({
-    gene_id%>%geneview()
+    gene_sel()%>%geneview()
   })
   
+}
+
+
+
+
+volcano_ui<-function(id){
+  ns<-NS(id)
+  
+  
+  timepoints<-db_query("SELECT timepoint_friendly AS timepoints
+                     from timepoints ORDER BY timepoint_hrs")$timepoints
+  stats_by_timepoint<-fread("data/stats_by_timepoint.csv")
+  
+  fluidPage(
+  inputPanel(
+    sliderTextInput(ns("timepoint"),"Select Timepoint",
+                    choices = timepoints, animate = animationOptions(interval = 10*1000, loop = FALSE, playButton = NULL,
+                                                                     pauseButton = NULL),
+                    grid = TRUE),
+    sliderTextInput(ns("pv"),"Max P-Value",
+                    choices = c("1e-5","1e-4","0.01","0.05","1"), grid = TRUE),
+    sliderTextInput(ns("qv"),"Max Q-Value",
+                    choices = c("0.01","0.05","0.1","0.2","0.3","0.5","1"), grid = TRUE,
+                    selected = "1"),
+    sliderTextInput(ns("fc"),"Min L2FC",
+                    choices = c("10","5","3","2","1","0.5","0"), grid = TRUE)
+    
+  ) , plotlyOutput(ns("volcano")))
+    
+}
+
+
+volcano_server<-function(input,output,session){
+
+  
+  timepoints<-db_query("SELECT timepoint_friendly AS timepoints
+                     from timepoints ORDER BY timepoint_hrs")$timepoints
+  stats_by_timepoint<-fread("data/stats_by_timepoint.csv")
+  
+output$volcano <- renderPlotly(
+  volcano_plot(
+    stats_by_timepoint[timepoint==input$timepoint],
+    maxp  = as.numeric(input$pv),
+    maxq  = as.numeric(input$qv),
+    minFC = as.numeric(input$fc)
+  ))
+
+gene_filter<-reactive(stats_by_timepoint[timepoint==input$timepoint]%>%
+                   .[pvalue<=as.numeric(input$pv)]%>%
+                   .[qvalue<=as.numeric(input$qv)]%>%
+                   .[abs(L2FC)>=as.numeric(input$fc)])
+
+output$dt<-renderDataTable(
+  gene_filter()%>%
+    .[order(pvalue),.("Symbol"=gene_symbol,"Name"=gene_name,L2FC,
+                      "P-value"=pvalue,"Q-value"=qvalue)]%>%
+    lookup_table()
+  
+  
+)
+
+plt_click<-reactive(event_data("plotly_click")%>%unlist%>%extract(2))
+click_gene<-reactive(gene_filter()%>%.[plt_click()+1,gene_id])
+
+return(click_gene)
+
+
 }
