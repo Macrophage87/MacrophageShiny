@@ -1,10 +1,11 @@
+setwd(config::get("working_directory"))
 
 library(shiny)
 library(magrittr)
 
-source("/data/users/stephen/Production/functions/CommonFunctions.R")
-source("/data/users/stephen/Production/functions/gene_ot.R")
-source("/data/users/stephen/Production/functions/kegg_functions.R")
+source("functions/CommonFunctions.R")
+source("functions/gene_ot.R")
+source("functions/kegg_functions.R")
 
 
 
@@ -48,7 +49,7 @@ server <- function(input, output, session) {
     if(input$keggpw_rows_selected==""){return(FALSE)}
             
             
-        filename <- glue("/data/users/stephen/Production/kegg/",
+        filename <- glue("kegg/",
                          "{kegg_pws[input$keggpw_rows_selected,pathway_id]}.pathview.multi.png")
         list(src = filename) 
     }, deleteFile = FALSE)

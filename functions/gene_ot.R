@@ -1,3 +1,5 @@
+setwd(config::get("working_directory"))
+
 library(glue)
 library(ggplot2)
 library(DT)
@@ -6,7 +8,7 @@ library(ggthemes)
 library(purrr)
 library(scales)
 library(KEGGgraph)
-source("/data/users/stephen/Production/functions/CommonFunctions.R")
+source("functions/CommonFunctions.R")
 
 genes<-function(update=FALSE){
   gns<-db_query("SELECT DISTINCT G.gene_id, G.gene_symbol, G.gene_name, S.common_name AS species
@@ -15,7 +17,7 @@ JOIN transcript_values TV ON G.gene_id = TV.gene_id
 JOIN species S ON G.species_id = S.species_id
 WHERE TV.TPM >0")
   
-  if(update){fwrite(gns,"/data/users/stephen/Production/data/genes.csv")}
+  if(update){fwrite(gns,"data/genes.csv")}
 
   return(gns)
 }
