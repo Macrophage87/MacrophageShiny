@@ -2,7 +2,6 @@ setwd(config::get("working_directory"))
 
 library("dplyr", lib.loc = "/usr/lib/R/library")
 
-setwd("/data/users/stephen/Production")
 
 db_connect <-
   function(database = NULL, user_db = "shiny_mysql") {
@@ -40,8 +39,7 @@ lookup_table <- function(data) {
 }
 
 
-db_query <-
-  function(...,
+db_query <-function(...,
            params = NULL,
            database = NULL,
            user_db = "shiny_mysql") {
@@ -109,7 +107,7 @@ pw_hash <- function(username, password, pw_date) {
 token_hash <- function(page) {
   require(digest)
   token_pw <-
-    config::get("auth_token", file = "/data/users/stephen/config.yml")
+    config::get("auth_token")
   digest(
     paste0(page, token_pw$token, lubridate::today()),
     algo = "sha512",
