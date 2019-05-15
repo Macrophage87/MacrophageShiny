@@ -1,37 +1,20 @@
-
+setwd(config::get("working_directory"))
 library(shiny)
-
-
-
-
-
+library(magrittr)
+source("functions/CommonFunctions.R")
+source("functions/gene_ot.R")
+source("functions/kegg_functions.R")
 ui <- fluidPage(
-
-    titlePanel("Old Faithful Geyser Data"),
-
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
-
-        mainPanel(
-           plotOutput("distPlot")
-        )
+    tf_table_ui("tf"),
+    tabsetPanel(
+        tabPanel("Regulated Gene Info"),
+        tabPanel("Transcription Factor Info",gene_ot_ui("transf"))
     )
 )
 
-server <- function(input, output) {
-
-    output$distPlot <- renderPlot({
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
-
-        hist(x, breaks = bins, col = 'darkgray', border = 'white')
-    })
+server <- function(input, output,session) {
+sel_tf<-callModule(tf_table,"tf")
+callModule(gene_ot_server,"transf",sel_tf)
 }
 
 shinyApp(ui = ui, server = server)
