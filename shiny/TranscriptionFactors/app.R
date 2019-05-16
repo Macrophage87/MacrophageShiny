@@ -4,6 +4,7 @@ library(magrittr)
 source("functions/CommonFunctions.R")
 source("functions/gene_ot.R")
 source("functions/kegg_functions.R")
+source("functions/tf_functions.R")
 ui <- fluidPage(
     tf_table_ui("tf"),
     tabsetPanel(
@@ -15,6 +16,8 @@ ui <- fluidPage(
 server <- function(input, output,session) {
 sel_tf<-callModule(tf_table,"tf")
 callModule(gene_ot_server,"transf",sel_tf)
+
+
 }
 
 shinyApp(ui = ui, server = server)
