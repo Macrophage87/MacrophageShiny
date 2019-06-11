@@ -10,3 +10,10 @@
 **/*.json
 **/*.oml
 **/*.owl
+config.yml
+shiny/VolcanoPlot/VolcanoPlot
+shiny/VolcanoPlot/shiny-server
+shiny/app.R
+shiny/GenExOT/shiny-server
+shiny/GenExOT/GenExOT
+shiny/TranscriptionFactors/TranscriptionFactors

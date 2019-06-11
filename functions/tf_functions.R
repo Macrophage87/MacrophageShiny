@@ -30,3 +30,38 @@ tf_table<-function(input,output,session,tf=transcription_factors()){
   
 }
 
+tf_target_ui<-function(id){
+  ns<-NS(id)
+  plotlyOutput(ns("tf_heatmap"))
+}
+
+tf_genes<-function(tf_gene_id,limit=50){
+
+db_query("SELECT G.gene_id, avg(TF.binding_score) AS bs 
+FROM trans_factor_map TF
+JOIN genes G ON TF.target_gene_id = G.gene_id
+WHERE TF.tf_gene_id = ?
+GROUP BY TF.target_gene_id 
+ORDER BY bs DESC 
+Limit ?",
+params= list(tf_gene_id,limit))
+
+}
+
+
+  
+tf_target<-function(input,output,session,tf){
+
+  gene_list<-reactive(tf_genes(tf(), limit=30))
+  gene_mat<-reactive(gene_list()%>%`$`(gene_id)%>%gene_data()%>%gene_matrix())
+  
+  output$tf_heatmap<-renderPlotly({
+    mat<-gene_mat()
+    
+    plot_ly(z = mat, type = "heatmap")
+  })
+  
+}
+
+
+

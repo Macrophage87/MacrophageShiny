@@ -1,5 +1,9 @@
-
+library(magrittr)
+library(stringr)
+library(STRINGdb)
 library(httr)
+
+source("functions/gene_ot.R")
 
 
 timepoints<-c(4,24,24*7*2,24*7*4,24*7*6)
@@ -24,66 +28,18 @@ string_db<-STRINGdb$new(9606)
 string_db
 
 map_all<-function(analysis){
-
-  mapped<-string_db$map(analysis_sig,"gene_symbol")%>%na.omit
-  
-  analysis_sig<-analysis[pvalue<0.05][order(qvalue)]
+  mapped<-string_db$map(analysis,"gene_symbol")%>%na.omit
   return(mapped)
 }
 
-all_mapped<-lapply(all_analyses,map_sig)
-mapped_clusters<-lapply(all_mapped,function(x)string_db$get_clusters(x$STRING_id))
+sig<-.%>%.[pvalue<=0.05]
 
-string_db$plot_network(mapped_clusters[[1]][[1]])
+all_sig_map<-lapply(all_analyses,sig)%>%lapply(map_all)%>%lapply(as.data.table)
 
-
-
-enrichment<-function(x)GET(glue("https://string-db.org/api/tsv/enrichment?identifiers={paste(x,collapse='%0')}"))%>%
-  content()
+string_db$get_clusters(all_sig_map[[1]]$STRING_id)
 
 
-enrichment(all_mapped[[1]])
-                                
-                                
-all_mapped_dt<-lapply(all_mapped,as.data.table)
-annot<-fread("data/annotations_9606.tsv",header=FALSE)%>%setnames(paste0("V",1:4),c("STRING_id","Ontology","Type","IEA"))
-ontologies<-annot[,unique(Ontology)]
+graph
 
+library(igraph)
 
-insig<-lapply(all_analyses,function(x)x[pvalue>0.05])
-
-#%>%unlist%>%{data.table("list_no"=1:length(.),"insig"=.)}
-
-
-map_all<-function(analysis){
-  mapped<-string_db$map(analysis,"gene_symbol")%>%na.omit%>%as.data.table
-  
-  analysis_sig<-mapped[pvalue<=0.05,sig:=1][order(qvalue)]
-  
-  return(analysis_sig)
-}
-
-all_mapped<-lapply(all_analyses,map_all)
-
-
-ont_map<-function(ont){
-ontology<-annot[Ontology==ont]
-fish<-matrix(rep(NA,4),nrow = 2)
-
-fish[1,1]<-sig_mapped  [ontology,on="STRING_id",.N]
-fish[1,2]<-insig_mapped[ontology,on="STRING_id",.N]
-fish[2,1]<-sig_mapped  [!ontology,on="STRING_id",.N]
-fish[2,2]<-insig_mapped[!ontology,on="STRING_id",.N]
-
-return(fisher.test(fish)%>%broom::tidy(x)%>%as.data.table%>%.[,"Ontology":=ont])
-}
-
-map_ont<-function(values){
-sig_mapped<-values[sig==1]
-insig_mapped<-values[is.na(sig)]
-
-tp_enrich<-lapply(ontologies,ont_map)%>%rbindlist()
-
-return(tp_enrich)}
-
-all_mapped_ontologies<-lapply(all_mapped,map_ont)
