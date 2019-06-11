@@ -1,9 +1,11 @@
+setwd(config::get("working_directory"))
+
 library(shiny)
 library(ggplot2)
 library(plotly)
 library(shinyWidgets)
 library(viridis)
-setwd("/data/users/stephen/Production")
+
 source("functions/CommonFunctions.R")
 source("functions/gene_ot.R")
 

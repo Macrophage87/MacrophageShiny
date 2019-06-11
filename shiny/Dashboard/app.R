@@ -1,13 +1,13 @@
 setwd(config::get("working_directory"))
 
 library(shinydashboard)
-library(shiny)
+library(shiny) 
 library(data.table)
 library(magrittr)
 library(purrr)
 library(data.table)
 source("/data/users/stephen/Production/functions/CommonFunctions.R")
- 
+  
  
 app_list<-db_query("SELECT app_id, app_name, icon, uri, description
                    FROM app_list WHERE offline=0 ORDER BY `order`")
