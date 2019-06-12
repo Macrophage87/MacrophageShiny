@@ -49,7 +49,7 @@ FROM trans_factor_map TF
 JOIN genes G ON TF.target_gene_id = G.gene_id
 WHERE TF.tf_gene_id = ?
 GROUP BY TF.target_gene_id 
-ORDER BY bs DESC 
+ORDER BY TF.binding_score DESC 
 Limit ?",
 params= list(tf_gene_id,limit))
 
