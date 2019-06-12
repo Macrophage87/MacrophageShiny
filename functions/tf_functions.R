@@ -34,7 +34,7 @@ tf_table<-function(input,output,session,tf=transcription_factors()){
 
 tf_target_ui<-function(id){
   ns<-NS(id)
-  plotlyOutput(ns("tf_heatmap"))
+  dataTableOutput(ns("tf_dt"))
 }
 
 tf_genes<-function(tf_gene_id,limit=50){
@@ -55,18 +55,8 @@ params= list(tf_gene_id,limit))
 tf_target<-function(input,output,session,tf){
 
   gene_list<-reactive(tf_genes(tf(), limit=30))
-  gene_mat<-reactive(gene_list()%>%`$`(gene_id)%>%gene_data())
-  
-  output$tf_heatmap<-renderPlotly({
-    mat<-gene_mat()%>%melt
-    
-    mmat<-mat%>%melt
-    
-    mx<-mmat$value%>%abs%>%max
-    
-    ggplot(mmat, aes(x=variable,y=gene_symbol, fill=value))+geom_tile()+scale_fill_viridis_d()
-    
-    })
+
+  output$tf_dt<-renderDataTable(gene_list)
   
 }
 
