@@ -44,7 +44,7 @@ tf_target_ui<-function(id){
 
 tf_genes<-function(tf_gene_id,limit=50){
 
-db_query("SELECT G.gene_id, avg(TF.binding_score) AS bs 
+db_query("SELECT G.gene_id, G.gene_symbol, G.gene_name 
 FROM trans_factor_map TF
 JOIN genes G ON TF.target_gene_id = G.gene_id
 WHERE TF.tf_gene_id = ?
