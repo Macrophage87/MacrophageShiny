@@ -5,10 +5,12 @@ library(ggplot2)
 library(DT)
 library(data.table)
 library(ggthemes)
+library(plotly)
 library(purrr)
 library(scales)
 library(KEGGgraph)
 source("functions/CommonFunctions.R")
+
 
 genes<-function(update=FALSE){
   gns<-db_query("SELECT DISTINCT G.gene_id, G.gene_symbol, G.gene_name, S.common_name AS species
@@ -218,15 +220,24 @@ volcano_plot<-function(data, maxq=0.2, minFC = 0, maxp=0){
       scale_y_continuous(name = "-Log10(P-Value)")+
       theme(legend.position = "none")
     
-
-#    scale_y_continuous(name=expression("Log"[2]*" Fold Change"))
-    
-    
-  
-  
   ggplotly(plt)
 }
 
+setupUi <- function( id ){
+  ns<-NS(id)
+  fluidPage(dataTableOutput(ns("geneTable")))
+}
+
+setup<-function(input,output,session){
+  gene_list<-fread("data/genes.csv")
+  
+  output$geneTable<-renderDataTable({
+    gene_list[,.("Symbol"=gene_symbol,"Name"=gene_name,"Species"=species)]%>%lookup_table()
+  })
+  
+  x<-reactive(gene_list[input$geneTable_rows_selected,gene_id])
+  return(x)
+}
 
 gene_ot_ui<-function(id){
   ns<-NS(id)
@@ -240,7 +251,7 @@ gene_ot_ui<-function(id){
 
 gene_ot_server<-function(input,output,session,gene_sel){
   
-  #stopifnot(is.null(gene_sel))
+  req(gene_sel)
   
   genes_ot<-reactive(gene_sel()%>%gene_over_time())
   
@@ -286,6 +297,9 @@ volcano_ui<-function(id){
   ) , plotlyOutput(ns("volcano")))
     
 }
+
+
+
 
 
 volcano_server<-function(input,output,session){

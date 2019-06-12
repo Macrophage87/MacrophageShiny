@@ -1,4 +1,6 @@
 
+library(plotly)
+library(data.table)
 
 
 transcription_factors<-function(){
@@ -53,13 +55,18 @@ params= list(tf_gene_id,limit))
 tf_target<-function(input,output,session,tf){
 
   gene_list<-reactive(tf_genes(tf(), limit=30))
-  gene_mat<-reactive(gene_list()%>%`$`(gene_id)%>%gene_data()%>%gene_matrix())
+  gene_mat<-reactive(gene_list()%>%`$`(gene_id)%>%gene_data())
   
   output$tf_heatmap<-renderPlotly({
-    mat<-gene_mat()
+    mat<-gene_mat()%>%melt
     
-    plot_ly(z = mat, type = "heatmap")
-  })
+    mmat<-mat%>%melt
+    
+    mx<-mmat$value%>%abs%>%max
+    
+    ggplot(mmat, aes(x=variable,y=gene_symbol, fill=value))+geom_tile()+scale_fill_viridis_d()
+    
+    })
   
 }
 
