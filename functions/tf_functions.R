@@ -32,10 +32,15 @@ tf_table<-function(input,output,session,tf=transcription_factors()){
   
 }
 
+ab_max<-possibly(function(x)ifelse(is.numeric(x),x,0)%>%abs%>%max,otherwise=0)
+
+source("functions/kegg_functions.R")
+
 tf_target_ui<-function(id){
   ns<-NS(id)
   dataTableOutput(ns("tf_dt"))
 }
+
 
 tf_genes<-function(tf_gene_id,limit=50){
 
@@ -56,7 +61,7 @@ tf_target<-function(input,output,session,tf){
 
   gene_list<-reactive(tf_genes(tf(), limit=30))
 
-  output$tf_dt<-renderDataTable(gene_list)
+  output$tf_dt<-renderDataTable(gene_list()%>%.[,gene_id]%>%kegg_ot()%>%kegg_datatable())
   
 }
 
