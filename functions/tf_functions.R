@@ -59,9 +59,20 @@ params= list(tf_gene_id,limit))
   
 tf_target<-function(input,output,session,tf){
 
-  gene_list<-reactive(tf_genes(tf(), limit=30))
+  gene_list<-reactive(tf_genes(tf(), limit=50))
 
-  output$tf_dt<-renderDataTable(gene_list()%>%.[,gene_id]%>%kegg_ot()%>%kegg_datatable())
+  output$tf_dt<-renderDataTable({
+    
+    gene_list()%>%kegg_ot()%>%kegg_datatable()
+    
+    })
+  
+  sel_target<-reactive(
+                      gene_list()%>%
+                         .[input$tf_dt_rows_selected,gene_id]
+                       )
+  
+  return(sel_target)
   
 }
 
