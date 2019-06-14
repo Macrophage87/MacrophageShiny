@@ -33,7 +33,7 @@ kegg_ot<-function(genes,s=sample_info()){
     .[,.("L2FC"=mean(ltpm[sample_type_id==2])-
                 mean(ltpm[sample_type_id==1])),
       by=c("timepoint","gene_id","gene_symbol","gene_name")]%>%
-    dcast(gene_id+gene_symbol+gene_name~timepoint)%>%
+    dcast(gene_id+gene_symbol+gene_name~timepoint)%>%setorder("gene_id")%>%
     setnames(c("4","24","336","672","1008"),
              c("4h","24h","2wk","4wk","6wk"))
 }

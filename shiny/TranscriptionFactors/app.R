@@ -7,7 +7,7 @@ source("functions/kegg_functions.R")
 source("functions/tf_functions.R")
 
 ui <- fluidPage(
-    hide_errors(),
+    hide_errors(), 
     tf_table_ui("tf"),
     tabsetPanel(
         tabPanel("Regulated Gene Info", tf_target_ui("heatmap"),

@@ -69,7 +69,8 @@ tf_target<-function(input,output,session,tf){
   
   sel_target<-reactive(
                       gene_list()%>%
-                         .[input$tf_dt_rows_selected,gene_id]
+                        setorder("gene_id")%>%
+                        .[input$tf_dt_rows_selected,gene_id]
                        )
   
   return(sel_target)
