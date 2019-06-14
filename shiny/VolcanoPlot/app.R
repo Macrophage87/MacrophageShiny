@@ -10,10 +10,7 @@ source("functions/CommonFunctions.R")
 source("functions/gene_ot.R")
 
 ui <- fluidPage(
-    tags$style(type="text/css",
-               ".shiny-output-error { visibility: hidden; }",
-               ".shiny-output-error:before { visibility: hidden; }"
-    ),
+  hide_errors(),
     volcano_ui("volc"), 
     gene_ot_ui("gene_ot")
 )

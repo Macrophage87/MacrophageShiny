@@ -115,16 +115,23 @@ token_hash <- function(page) {
   )
 }
 
-gcat <- . %>% glue_col %>% cat
+hide_errors<-function(){
+  tags$style(type="text/css",
+                                   ".shiny-output-error { visibility: hidden; }",
+                                   ".shiny-output-error:before { visibility: hidden; }"
+)}
 
-p_start <- function(x, ...) {
-  if (getOption("verbose") == TRUE) {
-    x %>% glue_data(...) %>% bold() %>% blue() %>% cat()
-  }
-}
 
-p_complete <- function(x, ...) {
-  if (getOption("verbose") == TRUE) {
-    x %>% glue_data(...) %>% bold() %>% green() %>% cat()
-  }
-}
+get_screen_size<-function(){tags$head(tags$script('
+                                var dimension = [0, 0];
+                                $(document).on("shiny:connected", function(e) {
+                                    dimension[0] = window.innerWidth;
+                                    dimension[1] = window.innerHeight;
+                                    Shiny.onInputChange("dimension", dimension);
+                                });
+                                $(window).resize(function(e) {
+                                    dimension[0] = window.innerWidth;
+                                    dimension[1] = window.innerHeight;
+                                    Shiny.onInputChange("dimension", dimension);
+                                });
+                            '))}

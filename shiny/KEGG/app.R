@@ -17,10 +17,7 @@ kegg_pws<-db_query("SELECT KP.kegg_pw_id, KP.pathway_id,KP.pathway_name, timepoi
     setnames(colnames(.),c("kegg_pw_id","pathway_id","Pathway Name", "4h", "24h", "2wk", "4wk", "6wk"))
  
 ui <- fluidPage(
-    tags$style(type="text/css",
-               ".shiny-output-error { visibility: hidden; }",
-               ".shiny-output-error:before { visibility: hidden; }"
-    ),
+        hide_errors(),
         mainPanel(
            dataTableOutput("keggpw"),
            
